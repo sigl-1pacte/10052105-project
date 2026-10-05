@@ -1,0 +1,82 @@
+{
+  "argocd": {
+    "autoSync": true,
+    "enabled": true,
+    "prune": false,
+    "repositoryTarget": "",
+    "revision": "main",
+    "selfHeal": true
+  },
+  "database": {},
+  "description": "",
+  "environments": [
+    "dev"
+  ],
+  "features": {
+    "ci": true,
+    "envConfig": false,
+    "logger": true,
+    "yamlConfig": false
+  },
+  "helm": {
+    "appPort": 8000,
+    "config": {
+      "logLevel": "INFO"
+    },
+    "enabled": true,
+    "host": "myapi.10052105-project.cnp.1pacte.tech",
+    "ingressEnabled": true,
+    "replicas": 1,
+    "resources": {
+      "requests": {
+        "cpu": "500m",
+        "memory": "512Mi"
+      }
+    },
+    "servicePort": 8000,
+    "tlsEnabled": true
+  },
+  "kind": "service",
+  "observability": {
+    "backend": "loki",
+    "collector": "alloy",
+    "grafana": {
+      "datasource": "Loki",
+      "folderName": "10052011-myapi",
+      "folderTitle": "10052011 / myapi",
+      "path": "/d/cnp-10052011-myapi-logs/myapi-logs?orgId=1&var-team=10052011&var-project=myapi",
+      "provisioning": "grafana-operator",
+      "teamSubspacePath": "/teams/10052011/observability/logs"
+    },
+    "labelSelector": "cnp.io/logging=enabled,project=myapi,team=10052011",
+    "logsEnabled": true,
+    "requiredPodLabels": {
+      "cnp.io/logging": "enabled",
+      "project": "myapi",
+      "team": "10052011"
+    }
+  },
+  "owner": "",
+  "projectName": "myapi",
+  "projectSlug": "10052105-project",
+  "repository": {
+    "githubOrg": "sigl-1pacte",
+    "private": false
+  },
+  "routing": {
+    "reason": "No sensitive data declared; AWS EKS is the public managed cluster target.",
+    "targetCluster": "aws-eks"
+  },
+  "security": {
+    "containsSensitiveData": false,
+    "dataClassification": "public",
+    "publicExposure": true,
+    "requiresSecrets": false
+  },
+  "teamName": "10052011",
+  "template": {
+    "appType": "python-api",
+    "framework": "fastapi",
+    "language": "python"
+  }
+}
