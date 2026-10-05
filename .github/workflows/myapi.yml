@@ -1,0 +1,81 @@
+name: CI (myapi)
+
+on:
+  pull_request:
+    paths: ['apps/myapi/**']
+  push:
+    branches: [main, dev]
+    paths: ['apps/myapi/**']
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  myapi:
+    name: myapi
+    uses: ./.github/workflows/ci-myapi.yml
+    with:
+      app-name: myapi
+      python-version: "3.12"
+
+  deploy:
+    name: deploy
+    needs: myapi
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build and push image
+        run: |
+          IMAGE_REPO="ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-myapi"
+          IMAGE="$IMAGE_REPO:${{ github.sha }}"
+          echo "IMAGE_REPO=$IMAGE_REPO" >> "$GITHUB_ENV"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          echo "${{ secrets.GHCR_PACKAGES_TOKEN }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+          docker build -t "$IMAGE" apps/myapi
+          docker push "$IMAGE"
+
+      - name: Update cnp-gitops
+        run: |
+          set -euo pipefail
+          git config --global user.name "cnp-ci[bot]"
+          git config --global user.email "cnp-ci[bot]@users.noreply.github.com"
+          git clone --branch cnp-sessions-e148ecd9-6651-471f-ab32-9777f95316cb --single-branch "https://x-access-token:${{ secrets.GHCR_GITOPS_TOKEN }}@github.com/sigl-1pacte/cnp-gitops.git" gitops-checkout
+          cd gitops-checkout
+
+          VALUES_FILE="apps/10052011/10052105-project/myapi/values.yaml"
+          ruby -ryaml -e '
+            path, image_repo, image_tag = ARGV
+            values = File.exist?(path) ? YAML.load_file(path) : {}
+            values = {} unless values.is_a?(Hash)
+            values["image"] = {} unless values["image"].is_a?(Hash)
+            values["image"]["repository"] = image_repo
+            values["image"]["tag"] = image_tag
+            values["container"] = {} unless values["container"].is_a?(Hash)
+            values["container"].delete("args")
+            File.write(path, YAML.dump(values))
+          ' "$VALUES_FILE" "${{ env.IMAGE_REPO }}" "${{ github.sha }}"
+
+          git add "$VALUES_FILE"
+          if git diff --cached --quiet; then
+            echo "no changes to commit"
+            exit 0
+          fi
+          git commit -m "deploy(myapi): ${{ github.sha }}"
+
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:cnp-sessions-e148ecd9-6651-471f-ab32-9777f95316cb; then
+              echo "pushed successfully"
+              exit 0
+            fi
+
+            echo "push rejected, attempt $attempt — fetching and rebasing"
+            git fetch origin cnp-sessions-e148ecd9-6651-471f-ab32-9777f95316cb
+            git rebase origin/cnp-sessions-e148ecd9-6651-471f-ab32-9777f95316cb
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::failed to push to cnp-gitops after 5 attempts"
+              exit 1
+            fi
+          done
