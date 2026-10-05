@@ -1,0 +1,54 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: myapi-logs
+  namespace: observability
+  labels:
+    project: myapi
+    team: 10052011
+spec:
+  folderRef: 10052011-myapi
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  json: |
+    {
+      "uid": "cnp-10052011-myapi-logs",
+      "title": "myapi logs",
+      "schemaVersion": 39,
+      "version": 1,
+      "tags": [
+        "cnp",
+        "loki",
+        "myapi",
+        "10052011"
+      ],
+      "timezone": "browser",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "logs",
+          "title": "Pod logs",
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "{team=\"10052011\", project=\"myapi\"}"
+            }
+          ],
+          "gridPos": {
+            "h": 20,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          }
+        }
+      ]
+    }
